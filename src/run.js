@@ -29,7 +29,8 @@ var res = Q.fcall(function(db) {
       clientId: process.env["GOOGLE_CLIENT_ID"],
       clientSecret: process.env["GOOGLE_CLIENT_SECRET"],
       redirect: "/oauth2callback"
-    }
+    },
+    remoteDisk: process.env["REMOTE_DISK"]
   }, function(app) {
 
   });

@@ -307,6 +307,43 @@ $(function() {
               $("#doc-cover").toggle();
             }
 
+	    $("#grabProg").click(function() {
+		if (confirm('Are you sure?')) {
+		    document.getElementById('prog').value = editor.cm.getValue() ;
+		    flashMessage("Saving program...");
+		    $.ajax(
+			{ type: "post",
+			  url: '/submit-program',
+			  headers: { 'X-CSRF-Token': document.getElementsByName('_csrf')[0].value },
+			  data: $("#id-form").serialize()+'&'+$("#prog-form").serialize()
+			}).done( function (data) {
+			    flashMessage(data);
+			}).fail( function(jqXHR, status, errorThrown) {
+			    stickError("Saving program failed");
+			});
+		};
+		return false;
+	    });
+
+	    $("#get-grabProg").click(function() {
+		if (confirm('Are you really sure?')) {
+		    flashMessage("Loading...");
+		    $.ajax(
+			{ type: "post",
+			  url: '/get-program',
+			  headers: { 'X-CSRF-Token': document.getElementsByName('_csrf')[0].value },
+			  data: $("#id-form").serialize()+'&'+$("#prog-form").serialize()
+			}).done( function (data) {
+			    editor.cm.setValue(data);
+			    editor.cm.clearHistory();
+			    flashMessage("Program loaded !");
+			}).fail( function(jqXHR, status, errorThrown) {
+			    stickError("Loading program failed");
+			});
+		};
+		return false;
+	    });
+
           $('#font-plus').click(changeFont);
           $('#font-minus').click(changeFont);
 

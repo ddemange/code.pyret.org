@@ -12,6 +12,10 @@ function start(config, onServerReady) {
   var url = require('url');
 //  var mail = require('./mail.js');
   var fs = require('fs');
+  var temp = require('tmp');
+  var bodyParser = require('body-parser');
+  var csrfProtection = csrf({ cookie: true });
+  var scp2 = require('scp2');
 
   function loggedIn(req) {
     var session = req.session;
@@ -60,8 +64,10 @@ function start(config, onServerReady) {
     secret: config.sessionSecret,
     key: "code.pyret.org"
   }));
+
   app.use(cookieParser());
-  app.use(csrf());
+
+  var parseForm = bodyParser.urlencoded({ extended: false });
 
   var auth = googleAuth.makeAuth(config);
   var db = config.db;
@@ -288,9 +294,54 @@ function start(config, onServerReady) {
     });
   });
 
-  app.get("/editor", function(req, res) {
-    res.render("editor.html");
+  app.get("/editor", csrfProtection, function(req, res) {
+    res.render("editor.html", {csrfToken: req.csrfToken()});
   });
+
+  function fwd_error (err,next,fn_desc) {
+      console.log('Error in '+fn_desc);
+      console.log(err) ;
+      return next(err) ;
+  }
+
+  app.post("/submit-program",parseForm, csrfProtection, function(req, res, next) {
+      temp.tmpName(function (err, path) {
+	  if (err) { fwd_error(err, next, "/submit-program at tmp.tmpName") ; }
+	  else {
+	      fs.writeFile(path, req.body.prog, function(err) {
+		  if(err) { fwd_error(err, next, "/submit-program at fs.writeFile") ; }
+		  else {
+		      var user = req.body.fname+':'+req.body.passwd;
+		      var dest = user+'@'+config["remoteDisk"]+req.body.labn+'/'+req.body.pname;
+		      scp2.scp(path,dest,function(err) {
+			  if (err) { fwd_error(err, next, "/submit-program at scp2.scp") ; }
+			  else { res.send("OK"); }
+		      });
+		  }
+	      });
+	  }
+      });
+  });
+
+  app.post("/get-program",parseForm, csrfProtection, function(req, res, next) {
+      temp.tmpName(function (err, path) {
+	  if (err) { fwd_error(err,next, "/get-program at tmp.tmpName") ; }
+	  else {
+              var user = req.body.fname+':'+req.body.passwd ;
+	      var src = user+'@'+config["remoteDisk"]+req.body.labn+'/'+req.body.pname;
+	      scp2.scp(src,path, function(err) {
+		  if (err) { fwd_error(err,next, "/get-program at scp2.scp") ; }
+		  else {
+		      fs.readFile(path, 'utf8', function (err, data) {
+			  if (err) { fwd_error(err, next, "/get-program at fs.readFile") ; }
+			  else { res.send(data); }
+		      });
+		  }
+	      });
+	  }
+      });
+  });
+
 
   app.get("/neweditor", function(req, res) {
     res.sendfile("build/web/editor.html");
