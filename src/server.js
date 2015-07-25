@@ -3,6 +3,7 @@ var gapi = require('googleapis');
 
 function start(config, onServerReady) {
   var express = require('express');
+  var https = require('https');
   var cookieSession = require('cookie-session');
   var cookieParser = require('cookie-parser');
   var csrf = require('csurf');
@@ -357,10 +358,17 @@ function start(config, onServerReady) {
     res.redirect("/");
   });
 
-  var server = app.listen(config["port"]);
-
+  var options = {
+    key: fs.readFileSync('./server.key'),
+    cert: fs.readFileSync('./server.crt'),
+      // requestCert: true,
+    ca: [ fs.readFileSync('./server.csr') ]
+  };
+  
+  // var server = app.listen(config["port"]);
+  var server = https.createServer(options, app).listen(config["port"]);
+  
   onServerReady(app, server);
-
 }
 
 module.exports = {
